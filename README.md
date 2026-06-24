@@ -63,7 +63,21 @@ GEMINI_API_KEY=sua_chave_aqui
 PORT=3000
 ```
 
-**4. Rode o servidor**
+**4. Popule o banco de dados**
+
+Primeiro, sincronize os campeões, itens, runas e habilidades a partir do Data Dragon (API da Riot):
+```bash
+node src/jobs/syncPatch.js
+```
+
+Depois, gere as builds com a IA. Esse job processa os campeões em lotes de 5 e usa a `GEMINI_API_KEY` do `.env` — **sem ela esse passo não funciona**. Pra conseguir a chave, acesse [aistudio.google.com](https://aistudio.google.com) e crie uma gratuitamente:
+```bash
+node src/jobs/generateAiBuilds.js
+```
+
+> ⚠️ O job roda em loop até processar todos os ~160 campeões. Ele já tem pausas automáticas entre os lotes pra não estourar o rate limit do Gemini.
+
+**5. Rode o servidor**
 ```bash
 npm run dev   # com hot-reload (nodemon)
 npm start     # produção
