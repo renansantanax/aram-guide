@@ -1,0 +1,417 @@
+openapi: 3.0.3
+info:
+  title: ARAM Guide API
+  description: |
+    API de guia para o modo ARAM do League of Legends.
+    Fornece dados de campeoes, builds, habilidades, itens e runas otimizados para o ARAM.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Servidor local de desenvolvimento
+
+tags:
+  - name: Champions
+    description: Listagem e busca de campeoes
+  - name: Builds
+    description: Builds de ARAM por campeao
+  - name: Abilities
+    description: Habilidades dos campeoes com dicas de ARAM
+  - name: Items
+    description: Detalhes de itens
+  - name: Runes
+    description: Detalhes de runas
+
+paths:
+  /:
+    get:
+      summary: Health check da API
+      description: Verifica se a API esta no ar.
+      responses:
+        "200":
+          description: API rodando
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "ARAM Guide API rodando liso!"
+
+  /champions:
+    get:
+      tags: [Champions]
+      summary: "Listar / buscar campeoes"
+      description: |
+        Retorna todos os campeoes cadastrados.
+        Suporta filtragem por nome (q) e/ou por funcao (role).
+        Este endpoint tambem e acessivel via /champions/search com os mesmos parametros.
+      parameters:
+        - name: q
+          in: query
+          description: Filtro parcial pelo nome do campeao (case-insensitive)
+          required: false
+          schema:
+            type: string
+            example: "ez"
+        - name: role
+          in: query
+          description: Filtro exato pela funcao do campeao (case-insensitive)
+          required: false
+          schema:
+            type: string
+            example: "Marksman"
+      responses:
+        "200":
+          description: Lista de campeoes encontrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Champion"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /champions/search:
+    get:
+      tags: [Champions]
+      summary: Buscar campeoes (alias)
+      description: "Alias de GET /champions. Aceita os mesmos parametros de query."
+      parameters:
+        - name: q
+          in: query
+          description: Filtro parcial pelo nome do campeao (case-insensitive)
+          required: false
+          schema:
+            type: string
+        - name: role
+          in: query
+          description: Filtro exato pela funcao do campeao (case-insensitive)
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de campeoes encontrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Champion"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /champions/{id}:
+    get:
+      tags: [Champions]
+      summary: Buscar campeao por ID
+      parameters:
+        - $ref: "#/components/parameters/ChampionId"
+      responses:
+        "200":
+          description: Dados do campeao
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Champion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /champions/{id}/build:
+    get:
+      tags: [Builds]
+      summary: Build de ARAM do campeao
+      description: |
+        Retorna a build recomendada para o campeao no ARAM, incluindo itens,
+        runas e dicas de estilo de jogo (forcas, fraquezas e playstyle).
+      parameters:
+        - $ref: "#/components/parameters/ChampionId"
+      responses:
+        "200":
+          description: Build e dicas do campeao
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Build"
+        "404":
+          description: Build ainda nao cadastrada para este campeao
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Build ainda nao cadastrada para este campeao no ARAM."
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /champions/{id}/abilities:
+    get:
+      tags: [Abilities]
+      summary: Habilidades do campeao
+      description: |
+        Retorna todas as habilidades do campeao ordenadas pela tecla (Q, W, E, R, Passiva),
+        com dicas especificas para o ARAM.
+      parameters:
+        - $ref: "#/components/parameters/ChampionId"
+      responses:
+        "200":
+          description: Lista de habilidades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ability"
+        "404":
+          description: Habilidades nao encontradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Habilidades nao encontradas."
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /items/{id}:
+    get:
+      tags: [Items]
+      summary: Detalhes de um item
+      description: "Retorna os detalhes de um item pelo seu ID numerico do jogo. Exemplo: 3089 para o Capuz da Morte de Rabadon."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID numerico do item (igual ao ID do Data Dragon)
+          schema:
+            type: string
+            example: "3089"
+      responses:
+        "200":
+          description: Dados do item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "404":
+          description: Item nao encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Item nao encontrado."
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /runes/{id}:
+    get:
+      tags: [Runes]
+      summary: Detalhes de uma runa
+      description: "Retorna os detalhes de uma runa pelo seu ID numerico do jogo. Exemplo: 8112 para Eletrocutar."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID numerico da runa (igual ao ID do Data Dragon)
+          schema:
+            type: string
+            example: "8112"
+      responses:
+        "200":
+          description: Dados da runa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rune"
+        "404":
+          description: Runa nao encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Runa nao encontrada."
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  parameters:
+    ChampionId:
+      name: id
+      in: path
+      required: true
+      description: "ID textual do campeao (ex: Ezreal, MissFortune)"
+      schema:
+        type: string
+        example: "Ezreal"
+
+  responses:
+    NotFound:
+      description: Recurso nao encontrado
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Campeao nao encontrado"
+
+    InternalServerError:
+      description: Erro interno do servidor
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Erro ao buscar campeoes"
+              details:
+                type: string
+                example: "SQLITE_ERROR: no such table"
+
+  schemas:
+    Champion:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID unico do campeao (mesmo do Data Dragon)
+          example: "Ezreal"
+        name:
+          type: string
+          description: Nome de exibicao do campeao
+          example: "Ezreal"
+        role:
+          type: string
+          description: Funcao principal do campeao
+          example: "Marksman"
+        image_url:
+          type: string
+          description: URL do icone/imagem do campeao
+          example: "https://ddragon.leagueoflegends.com/cdn/14.9.1/img/champion/Ezreal.png"
+        tier:
+          type: string
+          description: "Tier do campeao no ARAM (S, A, B, C, D)"
+          example: "A"
+        aram_tags:
+          type: string
+          description: Tags descritivas para o ARAM
+          example: "Poke,Skillshot"
+
+    Build:
+      type: object
+      properties:
+        items:
+          type: array
+          description: Lista de IDs dos itens recomendados (ja parseada de JSON)
+          items:
+            type: string
+          example: ["3004", "3078", "3089", "3157", "3031", "3026"]
+        rune_primary:
+          type: string
+          description: ID da runa principal
+          example: "8112"
+        rune_secondary:
+          type: string
+          description: ID da runa secundaria
+          example: "8234"
+        strengths:
+          type: string
+          nullable: true
+          description: Pontos fortes do campeao no ARAM
+          example: "Alto dano de poke com Q em longo alcance"
+        weaknesses:
+          type: string
+          nullable: true
+          description: Pontos fracos do campeao no ARAM
+          example: "Fragil e depende de acertar skillshots"
+        playstyle:
+          type: string
+          nullable: true
+          description: Descricao do estilo de jogo recomendado para o ARAM
+          example: "Fique no backline e acerte Mystic Shots constantemente"
+
+    Ability:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID interno da habilidade
+          example: 1
+        champion_id:
+          type: string
+          description: ID do campeao ao qual a habilidade pertence
+          example: "Ezreal"
+        key:
+          type: string
+          description: "Tecla da habilidade (P, Q, W, E, R)"
+          example: "Q"
+        name:
+          type: string
+          description: Nome da habilidade
+          example: "Mystic Shot"
+        description:
+          type: string
+          description: Descricao da habilidade
+          example: "Ezreal dispara um raio de energia magica que aplica seus efeitos de ataque."
+        aram_tip:
+          type: string
+          nullable: true
+          description: Dica especifica para uso da habilidade no ARAM
+          example: "Use o Q constantemente para dar poke e acumular stacks do Tear."
+
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID numerico do item (Data Dragon)
+          example: "3089"
+        name:
+          type: string
+          description: Nome do item
+          example: "Rabadon's Deathcap"
+        image_url:
+          type: string
+          description: URL da imagem do item
+          example: "https://ddragon.leagueoflegends.com/cdn/14.9.1/img/item/3089.png"
+        description:
+          type: string
+          description: Descricao do item
+          example: "Aumenta o Poder de Habilidade do personagem em 35%."
+
+    Rune:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID numerico da runa (Data Dragon)
+          example: "8112"
+        name:
+          type: string
+          description: Nome da runa
+          example: "Electrocute"
+        path:
+          type: string
+          description: "Caminho/arvore da runa (ex: Domination, Precision)"
+          example: "Domination"
+        image_url:
+          type: string
+          description: URL da imagem da runa
+          example: "https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/Domination/Electrocute/Electrocute.png"
